@@ -1,18 +1,24 @@
 (ns iron
   (:import
-   (javax.swing JFrame JLabel JTextField)
    (java.awt GridLayout)
-   (java.awt.event ActionListener)))
+   (javax.swing JFrame JLabel JTextField)
+   (javax.swing.event DocumentListener)))
 
-(defn action-listener [obj func]
-  (.addActionListener
-    obj (proxy [ActionListener] []
-          (actionPerformed [evt] (func evt)))))
+(defn document-listener [field func]
+  (.addDocumentListener
+   (.getDocument field)
+   (proxy [DocumentListener] []
+     (changedUpdate [e] (func :changed e))
+     (insertUpdate [e] (func :insert e))
+     (removeUpdate [e] (func :remove e)))))
+
+(defn document-text [doc]
+  (.getText doc 0 (.getLength doc)))
 
 (defn configure-gui [frame label field]
-  (action-listener field
-    (fn [e]
-      (.setText label (.getActionCommand e))))
+  (document-listener field
+    (fn [method e]
+      (.setText label (document-text (.getDocument e)))))
   (doto frame
     (.setLayout (GridLayout.))
     (.add field)
