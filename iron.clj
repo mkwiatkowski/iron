@@ -2,10 +2,7 @@
   (:import
    (javax.swing JFrame JLabel JTextField)
    (java.awt GridLayout)
-   (java.awt.event ActionListener))
-  (:use clojure.contrib.import-static))
-
-(import-static javax.accessibility.AccessibleText SENTENCE)
+   (java.awt.event ActionListener)))
 
 (defn action-listener [obj func]
   (.addActionListener
