@@ -22,7 +22,7 @@
     (.setVisible true)))
 
 (defn main []
-  (let [frame (JFrame. "Snake")
+  (let [frame (JFrame. "Iron")
         label (JLabel. "Hello world")
         field (JTextField. 20)]
     (configure-gui frame label field)))
