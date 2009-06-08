@@ -34,7 +34,11 @@
   {:tumblr (read-json-file tumblr-filepath)})
 
 (defn query [db text]
-  (send display-agent update-results "done")
+  (when (:tumblr db)
+    (let [results (filter #(and (= (:type %) "regular") (.startsWith (:regular-title %) text))
+                          (:tumblr db))]
+      (when (not (empty? results))
+        (send display-agent update-results (:regular-title (first results))))))
   db)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
