@@ -25,6 +25,9 @@
              (/ (double (- (. System (nanoTime)) start)) 1000000000.0)))
     ret))
 
+(defn starts-with? [#^String str substr]
+  (.startsWith str substr))
+
 (defn read-json-file [filepath]
   (call-and-measure
    (format "Reading json file %s" filepath)
@@ -35,7 +38,7 @@
 
 (defn query [db text]
   (when (:tumblr db)
-    (let [results (filter #(and (= (:type %) "regular") (.startsWith (:regular-title %) text))
+    (let [results (filter #(and (= (:type %) "regular") (starts-with? (:regular-title %) text))
                           (:tumblr db))]
       (when (not (empty? results))
         (send display-agent update-results (:regular-title (first results))))))
