@@ -30,17 +30,17 @@
    (format "Reading json file %s" filepath)
    #(json/decode-from-reader (FileReader. filepath))))
 
-(defn search-init [db display tumblr-filepath]
+(defn search-init [state display tumblr-filepath]
   {:tumblr (read-json-file tumblr-filepath)
    :display display})
 
-(defn query [db text]
-  (when (:tumblr db)
+(defn query [state text]
+  (when (:tumblr state)
     (let [results (filter #(and (= (:type %) "regular") (starts-with? (:regular-title %) text))
-                          (:tumblr db))]
+                          (:tumblr state))]
       (when (not (empty? results))
-        (send (:display db) update-results (:regular-title (first results))))))
-  db)
+        (send (:display state) update-results (:regular-title (first results))))))
+  state)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Display agent
