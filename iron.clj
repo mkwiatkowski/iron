@@ -8,14 +8,11 @@
    (javax.swing.event DocumentListener)))
 
 ;; TODO: Circular dependency hack.
-(def display-agent)
 (def update-results)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Search agent
 ;;
-(def search-agent (agent {}))
-
 (defn call-and-measure [message fun]
   (printf "%s... " message) (flush)
   (let [start (. System (nanoTime))
@@ -33,22 +30,21 @@
    (format "Reading json file %s" filepath)
    #(json/decode-from-reader (FileReader. filepath))))
 
-(defn search-init [db tumblr-filepath]
-  {:tumblr (read-json-file tumblr-filepath)})
+(defn search-init [db display tumblr-filepath]
+  {:tumblr (read-json-file tumblr-filepath)
+   :display display})
 
 (defn query [db text]
   (when (:tumblr db)
     (let [results (filter #(and (= (:type %) "regular") (starts-with? (:regular-title %) text))
                           (:tumblr db))]
       (when (not (empty? results))
-        (send display-agent update-results (:regular-title (first results))))))
+        (send (:display db) update-results (:regular-title (first results))))))
   db)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Display agent
 ;;
-(def display-agent (agent {}))
-
 (defn document-listener [field func]
   (.addDocumentListener
    (.getDocument field)
@@ -60,10 +56,10 @@
 (defn document-text [doc]
   (.getText doc 0 (.getLength doc)))
 
-(defn configure-gui [frame label field]
+(defn configure-gui [state frame label field]
   (document-listener field
     (fn [method e]
-      (send search-agent query (document-text (.getDocument e)))))
+      (send (:search state) query (document-text (.getDocument e)))))
   (doto frame
     (.setLayout (GridLayout.))
     (.add field)
@@ -72,12 +68,13 @@
     (.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
     (.setVisible true)))
 
-(defn display-init [_]
+(defn display-init [state search]
   (let [frame (JFrame. "Iron")
         label (JLabel. "Hello world")
-        field (JTextField. 20)]
-    (configure-gui frame label field)
-    {:label label}))
+        field (JTextField. 20)
+        state {:label label :search search}]
+    (configure-gui state frame label field)
+    state))
 
 (defn update-results [state text]
   (.setText (:label state) text)
@@ -87,7 +84,9 @@
 ;; Main
 ;;
 (defn main []
-  (send display-agent display-init)
-  (send search-agent search-init (second *command-line-args*)))
+  (let [search-agent (agent {})
+        display-agent (agent {})]
+    (send display-agent display-init search-agent)
+    (send search-agent search-init display-agent (second *command-line-args*))))
 
 (if *command-line-args* (main))
