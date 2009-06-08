@@ -7,6 +7,10 @@
    (javax.swing JFrame JLabel JTextField)
    (javax.swing.event DocumentListener)))
 
+;; TODO: Circular dependency hack.
+(def display-agent)
+(def update-results)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Search agent
 ;;
@@ -29,10 +33,14 @@
 (defn search-init [db tumblr-filepath]
   {:tumblr (read-json-file tumblr-filepath)})
 
+(defn query [db text]
+  (send display-agent update-results "done")
+  db)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Display agent
 ;;
-(def display-agent (agent nil))
+(def display-agent (agent {}))
 
 (defn document-listener [field func]
   (.addDocumentListener
@@ -48,7 +56,7 @@
 (defn configure-gui [frame label field]
   (document-listener field
     (fn [method e]
-      (.setText label (document-text (.getDocument e)))))
+      (send search-agent query (document-text (.getDocument e)))))
   (doto frame
     (.setLayout (GridLayout.))
     (.add field)
@@ -61,7 +69,12 @@
   (let [frame (JFrame. "Iron")
         label (JLabel. "Hello world")
         field (JTextField. 20)]
-    (configure-gui frame label field)))
+    (configure-gui frame label field)
+    {:label label}))
+
+(defn update-results [state text]
+  (.setText (:label state) text)
+  state)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Main
