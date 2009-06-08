@@ -56,24 +56,21 @@
 (defn document-text [doc]
   (.getText doc 0 (.getLength doc)))
 
-(defn configure-gui [state frame label field]
-  (document-listener field
-    (fn [method e]
-      (send (:search state) query (document-text (.getDocument e)))))
-  (doto frame
-    (.setLayout (GridLayout.))
-    (.add field)
-    (.add label)
-    (.pack)
-    (.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
-    (.setVisible true)))
-
-(defn display-init [state search]
+(defn display-init [_ search]
   (let [frame (JFrame. "Iron")
         label (JLabel. "Hello world")
         field (JTextField. 20)
         state {:label label :search search}]
-    (configure-gui state frame label field)
+    (document-listener field
+      (fn [_ e]
+        (send (:search state) query (document-text (.getDocument e)))))
+    (doto frame
+      (.setLayout (GridLayout.))
+      (.add field)
+      (.add label)
+      (.pack)
+      (.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
+      (.setVisible true))
     state))
 
 (defn update-results [state text]
