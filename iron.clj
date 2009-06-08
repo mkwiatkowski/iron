@@ -7,6 +7,11 @@
    (javax.swing JFrame JLabel JTextField)
    (javax.swing.event DocumentListener)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Search agent
+;;
+(def search-agent (agent {}))
+
 (defn call-and-measure [message fun]
   (printf "%s... " message) (flush)
   (let [start (. System (nanoTime))
@@ -20,6 +25,14 @@
   (call-and-measure
    (format "Reading json file %s" filepath)
    #(json/decode-from-reader (FileReader. filepath))))
+
+(defn search-init [db tumblr-filepath]
+  {:tumblr (read-json-file tumblr-filepath)})
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Display agent
+;;
+(def display-agent (agent nil))
 
 (defn document-listener [field func]
   (.addDocumentListener
@@ -44,11 +57,17 @@
     (.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
     (.setVisible true)))
 
-(defn main []
+(defn display-init [_]
   (let [frame (JFrame. "Iron")
         label (JLabel. "Hello world")
         field (JTextField. 20)]
-    (configure-gui frame label field))
-  (read-json-file (second *command-line-args*)))
+    (configure-gui frame label field)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Main
+;;
+(defn main []
+  (send display-agent display-init)
+  (send search-agent search-init (second *command-line-args*)))
 
 (if *command-line-args* (main))
