@@ -1,14 +1,44 @@
 (ns iron
   (:require
-   (org.danlarkin [json :as json]))
+   [clojure.contrib.json.read :as json])
   (:import
-   (java.io FileReader)
-   (java.awt GridLayout)
+   (java.io File)
+   (java.awt AWTException GridLayout SystemTray TrayIcon)
+   (java.awt.event MouseEvent MouseListener)
+   (javax.imageio ImageIO)
    (javax.swing JFrame JLabel JTextField)
    (javax.swing.event DocumentListener)))
 
 ;; TODO: Circular dependency hack.
 (def update-results)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; System tray agent
+;;
+(defn add-mouse-listener [object func]
+  (.addMouseListener
+   object
+   (proxy [MouseListener] []
+     (mouseClicked  [e] (func :clicked e))
+     (mouseEntered  [e] (func :entered e))
+     (mouseExited   [e] (func :exited e))
+     (mousePressed  [e] (func :pressed e))
+     (mouseReleased [e] (func :released e)))))
+(defn on-left-mouse-button-clicked [object func]
+  (add-mouse-listener object (fn [type e] (if (and (= type :clicked) (= (.getButton e) MouseEvent/BUTTON1)) (func)))))
+
+(defn tray-init [state]
+  (if (SystemTray/isSupported)
+    (let [tray (SystemTray/getSystemTray)
+          image (ImageIO/read (File. "logo.png"))
+          icon (TrayIcon. image "Tip text")]
+      (on-left-mouse-button-clicked icon #(println "Clicked tray!"))
+      (try
+       (.add tray icon)
+       (catch AWTException e
+         (println "Unable to add to system tray: " + e))))
+    (println "No system tray."))
+  state)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Search agent
@@ -28,7 +58,7 @@
 (defn read-json-file [filepath]
   (call-and-measure
    (format "Reading json file %s" filepath)
-   #(json/decode-from-reader (FileReader. filepath))))
+   #(json/read-json (slurp filepath))))
 
 (defn search-init [state display tumblr-filepath]
   {:tumblr (read-json-file tumblr-filepath)
@@ -36,10 +66,10 @@
 
 (defn query [state text]
   (when (:tumblr state)
-    (let [results (filter #(and (= (:type %) "regular") (starts-with? (:regular-title %) text))
+    (let [results (filter #(and (= (% "type") "regular") (starts-with? (% "regular-title") text))
                           (:tumblr state))]
       (when (not (empty? results))
-        (send (:display state) update-results (:regular-title (first results))))))
+        (send (:display state) update-results ((first results) "regular-title")))))
   state)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -82,8 +112,10 @@
 ;;
 (defn main []
   (let [search-agent (agent {})
-        display-agent (agent {})]
+        display-agent (agent {})
+        tray-agent (agent {})]
     (send display-agent display-init search-agent)
-    (send search-agent search-init display-agent (second *command-line-args*))))
+    (send search-agent search-init display-agent (second *command-line-args*))
+    (send tray-agent tray-init)))
 
 (if *command-line-args* (main))
