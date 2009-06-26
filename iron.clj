@@ -13,34 +13,6 @@
 (def update-results)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; System tray agent
-;;
-(defn add-mouse-listener [object func]
-  (.addMouseListener
-   object
-   (proxy [MouseListener] []
-     (mouseClicked  [e] (func :clicked e))
-     (mouseEntered  [e] (func :entered e))
-     (mouseExited   [e] (func :exited e))
-     (mousePressed  [e] (func :pressed e))
-     (mouseReleased [e] (func :released e)))))
-(defn on-left-mouse-button-clicked [object func]
-  (add-mouse-listener object (fn [type e] (if (and (= type :clicked) (= (.getButton e) MouseEvent/BUTTON1)) (func)))))
-
-(defn tray-init [state]
-  (if (SystemTray/isSupported)
-    (let [tray (SystemTray/getSystemTray)
-          image (ImageIO/read (File. "logo.png"))
-          icon (TrayIcon. image "Tip text")]
-      (on-left-mouse-button-clicked icon #(println "Clicked tray!"))
-      (try
-       (.add tray icon)
-       (catch AWTException e
-         (println "Unable to add to system tray: " + e))))
-    (println "No system tray."))
-  state)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Search agent
 ;;
 (defn call-and-measure [message fun]
@@ -86,11 +58,14 @@
 (defn document-text [doc]
   (.getText doc 0 (.getLength doc)))
 
+(defn toggle-visible [frame]
+  (.setVisible frame (not (.isVisible frame))))
+
 (defn display-init [_ search]
   (let [frame (JFrame. "Iron")
         label (JLabel. "Hello world")
         field (JTextField. 20)
-        state {:label label :search search}]
+        state {:frame frame :label label :search search}]
     (document-listener field
       (fn [_ e]
         (send (:search state) query (document-text (.getDocument e)))))
@@ -107,6 +82,38 @@
   (.setText (:label state) text)
   state)
 
+(defn toggle-display [state]
+  (toggle-visible (:frame state))
+  state)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; System tray agent
+;;
+(defn add-mouse-listener [object func]
+  (.addMouseListener
+   object
+   (proxy [MouseListener] []
+     (mouseClicked  [e] (func :clicked e))
+     (mouseEntered  [e] (func :entered e))
+     (mouseExited   [e] (func :exited e))
+     (mousePressed  [e] (func :pressed e))
+     (mouseReleased [e] (func :released e)))))
+(defn on-left-mouse-button-clicked [object func]
+  (add-mouse-listener object (fn [type e] (if (and (= type :clicked) (= (.getButton e) MouseEvent/BUTTON1)) (func)))))
+
+(defn tray-init [state display]
+  (if (SystemTray/isSupported)
+    (let [tray (SystemTray/getSystemTray)
+          image (ImageIO/read (File. "logo.png"))
+          icon (TrayIcon. image "Tip text")]
+      (on-left-mouse-button-clicked icon #(send display toggle-display))
+      (try
+       (.add tray icon)
+       (catch AWTException e
+         (println "Unable to add to system tray: " + e))))
+    (println "No system tray."))
+  state)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Main
 ;;
@@ -116,6 +123,6 @@
         tray-agent (agent {})]
     (send display-agent display-init search-agent)
     (send search-agent search-init display-agent (second *command-line-args*))
-    (send tray-agent tray-init)))
+    (send tray-agent tray-init display-agent)))
 
 (if *command-line-args* (main))
