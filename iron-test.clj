@@ -12,6 +12,8 @@
   (testing "searching in regular-title"
     (let [clojure (regular-post "Clojure rocks!")
           tumblr (regular-post "My tumblr is the best.")]
-      (is (= [tumblr] (containing-text "tumblr" [clojure tumblr]))))))
+      (is (= [tumblr] (containing-text "tumblr" [clojure tumblr])))
+      (is (= [clojure] (containing-text "clojure" [clojure tumblr])) "is case-insensitive by default")
+      (is (= [] (containing-text "Tumblr" [clojure tumblr])) "is case-sensitive when a uppercase character appears in a query"))))
 
 (run-tests)

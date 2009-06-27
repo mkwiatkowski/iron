@@ -33,10 +33,16 @@
    (format "Reading json file %s" filepath)
    #(json/read-json (slurp filepath))))
 
+(defn- is-lower-case? [string]
+  (every? #(Character/isLowerCase #^Character %) string))
+
 (defn containing-text [text collection]
-  (filter #(and (= (% "type") "regular")
-                (.contains #^String (% "regular-title") text))
-          collection))
+  (let [contains-text? (if (is-lower-case? text)
+                   #(.contains (.toLowerCase #^String %) text)
+                   #(.contains #^String % text))]
+    (filter #(and (= (% "type") "regular")
+                  (contains-text? (% "regular-title")))
+          collection)))
 
 (defn search-init [state tumblr-filepath]
   {:tumblr (read-json-file tumblr-filepath)})
