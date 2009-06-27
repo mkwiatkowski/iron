@@ -4,7 +4,7 @@
   (:import
    (java.io File)
    (java.awt AWTException GridLayout SystemTray TrayIcon)
-   (java.awt.event MouseEvent MouseListener)
+   (java.awt.event KeyEvent KeyListener MouseEvent MouseListener)
    (javax.imageio ImageIO)
    (javax.swing JFrame JLabel JTextField)
    (javax.swing.event DocumentListener)))
@@ -56,6 +56,20 @@
      (insertUpdate [e] (func :insert e))
      (removeUpdate [e] (func :remove e)))))
 
+(defn add-key-listener [object func]
+  (.addKeyListener
+   object
+   (proxy [KeyListener] []
+     (keyPressed [e] (func :pressed e))
+     (keyReleased [e] (func :released e))
+     (keyTyped [e] (func :typed e)))))
+
+(defn on-escape-pressed [object func]
+  (add-key-listener
+   object
+   (fn [type e] (if (and (= type :pressed)
+                         (= (.getKeyCode e) KeyEvent/VK_ESCAPE)) (func)))))
+
 (defn document-text [doc]
   (.getText doc 0 (.getLength doc)))
 
@@ -70,6 +84,7 @@
     (document-listener field
       (fn [_ e]
         (send (:search state) query (document-text (.getDocument e)))))
+    (on-escape-pressed field #(toggle-visible frame))
     (doto frame
       (.setUndecorated true)
       (.setLayout (GridLayout.))
@@ -101,8 +116,12 @@
      (mouseExited   [e] (func :exited e))
      (mousePressed  [e] (func :pressed e))
      (mouseReleased [e] (func :released e)))))
+
 (defn on-left-mouse-button-clicked [object func]
-  (add-mouse-listener object (fn [type e] (if (and (= type :clicked) (= (.getButton e) MouseEvent/BUTTON1)) (func)))))
+  (add-mouse-listener
+   object
+   (fn [type e] (if (and (= type :clicked)
+                         (= (.getButton e) MouseEvent/BUTTON1)) (func)))))
 
 (defn tray-init [state display]
   (if (SystemTray/isSupported)
