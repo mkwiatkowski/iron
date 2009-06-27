@@ -50,7 +50,7 @@
 ;;
 (def *max-number-of-results* 10)
 
-(defn document-listener [field func]
+(defn add-document-listener [field func]
   (.addDocumentListener
    (.getDocument field)
    (proxy [DocumentListener] []
@@ -83,7 +83,7 @@
         pane (.getContentPane frame)
         field (JTextField. 30)
         state {:frame frame :labels [] :search search}]
-    (document-listener field
+    (add-document-listener field
       (fn [_ e]
         (send (:search state) query (document-text (.getDocument e)))))
     (on-escape-pressed field #(toggle-visible frame))
