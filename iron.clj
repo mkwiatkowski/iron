@@ -41,8 +41,7 @@
 (defn query [state text]
   (when (:tumblr state)
     (let [results (containing-text text (:tumblr state))]
-      (when (not (empty? results))
-        (send (:display state) update-results (map #(% "regular-title") results)))))
+      (send (:display state) update-results (map #(% "regular-title") results))))
   state)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
