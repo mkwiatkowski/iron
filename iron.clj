@@ -95,24 +95,32 @@
 (def main-frame (ref nil))
 (def result-labels (ref []))
 
-(defn- clear-results-list []
-  (doseq [label @result-labels]
-    (.remove @main-frame label))
-  (ref-set result-labels []))
+(defn- clear-results-list
+  ([pack-at-the-end]
+     (dosync
+      (doseq [label @result-labels]
+        (.remove @main-frame label))
+      (when pack-at-the-end
+        (.pack @main-frame))
+      (ref-set result-labels [])))
+  ([] (clear-results-list true)))
 
 (defn- populate-results-list [results]
-  (let [labels (map #(JLabel. %) results)]
-    (doseq [label labels]
-      (.add @main-frame label))
-    (.pack @main-frame)
-    (ref-set result-labels labels)))
+  (dosync
+   (let [labels (map #(JLabel. %) results)]
+     (doseq [label labels]
+       (.add @main-frame label))
+     (.pack @main-frame)
+     (ref-set result-labels labels))))
 
 (defn display-init []
   (do-swing
    (let [frame (JFrame. "Iron")
          pane (.getContentPane frame)
          field (JTextField. 30)]
-     (on-document-changed field #(send *search-agent* query %))
+     (on-document-changed field #(if (empty? %)
+                                   (clear-results-list)
+                                   (send *search-agent* query %)))
      (on-escape-pressed field #(toggle-visible frame))
      (doto pane
        (.setLayout (BoxLayout. pane BoxLayout/Y_AXIS))
@@ -128,9 +136,8 @@
 
 (defn update-results [results]
   (do-swing
-   (dosync
-    (clear-results-list)
-    (populate-results-list (take *max-number-of-results* results)))))
+   (clear-results-list false)
+   (populate-results-list (take *max-number-of-results* results))))
 
 (defn toggle-display []
   (do-swing
