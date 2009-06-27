@@ -42,12 +42,14 @@
   (when (:tumblr state)
     (let [results (containing-text text (:tumblr state))]
       (when (not (empty? results))
-        (send (:display state) update-results ((first results) "regular-title")))))
+        (send (:display state) update-results (map #(% "regular-title") results)))))
   state)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Display agent
 ;;
+(def *max-number-of-results* 10)
+
 (defn document-listener [field func]
   (.addDocumentListener
    (.getDocument field)
@@ -79,27 +81,37 @@
 (defn display-init [_ search]
   (let [frame (JFrame. "Iron")
         pane (.getContentPane frame)
-        label (JLabel. "Hello world")
         field (JTextField. 30)
-        state {:frame frame :label label :search search}]
+        state {:frame frame :labels [] :search search}]
     (document-listener field
       (fn [_ e]
         (send (:search state) query (document-text (.getDocument e)))))
     (on-escape-pressed field #(toggle-visible frame))
-    (.setLayout pane (BoxLayout. pane BoxLayout/Y_AXIS))
+    (doto pane
+      (.setLayout (BoxLayout. pane BoxLayout/Y_AXIS))
+      (.add field))
     (doto frame
       (.setUndecorated true)
-      (.add field)
-      (.add label)
       (.pack)
       (.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
       (.setLocationRelativeTo nil)
       (.setVisible true))
     state))
 
-(defn update-results [state text]
-  (.setText (:label state) text)
-  state)
+(defn- clear-results-list [frame labels]
+  (doseq [label labels]
+    (.remove frame label)))
+
+(defn- populate-results-list [frame results]
+  (let [labels (map #(JLabel. %) results)]
+    (doseq [label labels]
+      (.add frame label))
+    (.pack frame)
+    labels))
+
+(defn update-results [state results]
+  (clear-results-list (:frame state) (:labels state))
+  (assoc state :labels (populate-results-list (:frame state) (take *max-number-of-results* results))))
 
 (defn toggle-display [state]
   (toggle-visible (:frame state))
