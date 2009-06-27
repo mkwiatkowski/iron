@@ -76,6 +76,7 @@
       (.add label)
       (.pack)
       (.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
+      (.setLocationRelativeTo nil)
       (.setVisible true))
     state))
 
