@@ -71,6 +71,7 @@
       (fn [_ e]
         (send (:search state) query (document-text (.getDocument e)))))
     (doto frame
+      (.setUndecorated true)
       (.setLayout (GridLayout.))
       (.add field)
       (.add label)
