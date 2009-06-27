@@ -105,9 +105,16 @@
       (ref-set result-labels [])))
   ([] (clear-results-list true)))
 
+(defn- labels-from-results [results]
+  (concat
+   (map #(JLabel. %) (take *max-number-of-results* results))
+   (if (> (count results) *max-number-of-results*)
+     [(JLabel. (format "<html><font color=\"#999999\"><i>%d more results</i></font></html>" (- (count results) *max-number-of-results*)))]
+     [])))
+
 (defn- populate-results-list [results]
   (dosync
-   (let [labels (map #(JLabel. %) results)]
+   (let [labels (labels-from-results results)]
      (doseq [label labels]
        (.add @main-frame label))
      (.pack @main-frame)
@@ -137,7 +144,7 @@
 (defn update-results [results]
   (do-swing
    (clear-results-list false)
-   (populate-results-list (take *max-number-of-results* results))))
+   (populate-results-list results)))
 
 (defn toggle-display []
   (do-swing
