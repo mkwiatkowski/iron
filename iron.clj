@@ -1,6 +1,8 @@
 (ns iron
   (:require
    [clojure.contrib.json.read :as json])
+  (:use
+   [clojure.contrib.swing-utils :only (do-swing)])
   (:import
    (java.io File)
    (java.awt AWTException SystemTray TrayIcon)
@@ -15,6 +17,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Search agent
 ;;
+(def *search-agent* (agent nil))
+
 (defn call-and-measure [message fun]
   (printf "%s... " message) (flush)
   (let [start (. System (nanoTime))
@@ -29,19 +33,18 @@
    (format "Reading json file %s" filepath)
    #(json/read-json (slurp filepath))))
 
-(defn search-init [state display tumblr-filepath]
-  {:tumblr (read-json-file tumblr-filepath)
-   :display display})
-
 (defn containing-text [text collection]
   (filter #(and (= (% "type") "regular")
                 (.contains #^String (% "regular-title") text))
           collection))
 
+(defn search-init [state tumblr-filepath]
+  {:tumblr (read-json-file tumblr-filepath)})
+
 (defn query [state text]
   (when (:tumblr state)
     (let [results (containing-text text (:tumblr state))]
-      (send (:display state) update-results (map #(% "regular-title") results))))
+      (update-results (map #(% "regular-title") results))))
   state)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -49,7 +52,7 @@
 ;;
 (def *max-number-of-results* 10)
 
-(defn add-document-listener [field func]
+(defn- add-document-listener [field func]
   (.addDocumentListener
    (.getDocument field)
    (proxy [DocumentListener] []
@@ -57,7 +60,7 @@
      (insertUpdate [e] (func :insert e))
      (removeUpdate [e] (func :remove e)))))
 
-(defn add-key-listener [object func]
+(defn- add-key-listener [object func]
   (.addKeyListener
    object
    (proxy [KeyListener] []
@@ -65,61 +68,68 @@
      (keyReleased [e] (func :released e))
      (keyTyped [e] (func :typed e)))))
 
-(defn on-escape-pressed [object func]
+(defn- on-escape-pressed [object func]
   (add-key-listener
    object
    (fn [type e] (if (and (= type :pressed)
                          (= (.getKeyCode e) KeyEvent/VK_ESCAPE)) (func)))))
 
-(defn document-text [doc]
+(defn- document-text [doc]
   (.getText doc 0 (.getLength doc)))
 
-(defn toggle-visible [frame]
+(defn- toggle-visible [frame]
   (.setVisible frame (not (.isVisible frame))))
 
-(defn display-init [_ search]
-  (let [frame (JFrame. "Iron")
-        pane (.getContentPane frame)
-        field (JTextField. 30)
-        state {:frame frame :labels [] :search search}]
-    (add-document-listener field
-      (fn [_ e]
-        (send (:search state) query (document-text (.getDocument e)))))
-    (on-escape-pressed field #(toggle-visible frame))
-    (doto pane
-      (.setLayout (BoxLayout. pane BoxLayout/Y_AXIS))
-      (.add field))
-    (doto frame
-      (.setUndecorated true)
-      (.pack)
-      (.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
-      (.setLocationRelativeTo nil)
-      (.setVisible true))
-    state))
+(def main-frame (ref nil))
+(def result-labels (ref []))
 
-(defn- clear-results-list [frame labels]
-  (doseq [label labels]
-    (.remove frame label)))
+(defn- clear-results-list []
+  (doseq [label @result-labels]
+    (.remove @main-frame label))
+  (ref-set result-labels []))
 
-(defn- populate-results-list [frame results]
+(defn- populate-results-list [results]
   (let [labels (map #(JLabel. %) results)]
     (doseq [label labels]
-      (.add frame label))
-    (.pack frame)
-    labels))
+      (.add @main-frame label))
+    (.pack @main-frame)
+    (ref-set result-labels labels)))
 
-(defn update-results [state results]
-  (clear-results-list (:frame state) (:labels state))
-  (assoc state :labels (populate-results-list (:frame state) (take *max-number-of-results* results))))
+(defn display-init []
+  (do-swing
+   (let [frame (JFrame. "Iron")
+         pane (.getContentPane frame)
+         field (JTextField. 30)]
+     (add-document-listener field
+       (fn [_ e]
+         (send *search-agent* query (document-text (.getDocument e)))))
+     (on-escape-pressed field #(toggle-visible frame))
+     (doto pane
+       (.setLayout (BoxLayout. pane BoxLayout/Y_AXIS))
+       (.add field))
+     (doto frame
+       (.setUndecorated true)
+       (.pack)
+       (.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
+       (.setLocationRelativeTo nil)
+       (.setVisible true))
+     (dosync
+      (ref-set main-frame frame)))))
 
-(defn toggle-display [state]
-  (toggle-visible (:frame state))
-  state)
+(defn update-results [results]
+  (do-swing
+   (dosync
+    (clear-results-list)
+    (populate-results-list (take *max-number-of-results* results)))))
+
+(defn toggle-display []
+  (do-swing
+   (toggle-visible @main-frame)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; System tray agent
 ;;
-(defn add-mouse-listener [object func]
+(defn- add-mouse-listener [object func]
   (.addMouseListener
    object
    (proxy [MouseListener] []
@@ -129,24 +139,24 @@
      (mousePressed  [e] (func :pressed e))
      (mouseReleased [e] (func :released e)))))
 
-(defn on-left-mouse-button-clicked [object func]
+(defn- on-left-mouse-button-clicked [object func]
   (add-mouse-listener
    object
    (fn [type e] (if (and (= type :clicked)
                          (= (.getButton e) MouseEvent/BUTTON1)) (func)))))
 
-(defn tray-init [state display]
-  (if (SystemTray/isSupported)
-    (let [tray (SystemTray/getSystemTray)
-          image (ImageIO/read (File. "logo.png"))
-          icon (TrayIcon. image "Tip text")]
-      (on-left-mouse-button-clicked icon #(send display toggle-display))
-      (try
-       (.add tray icon)
-       (catch AWTException e
-         (println "Unable to add to system tray: " + e))))
-    (println "No system tray."))
-  state)
+(defn tray-init []
+  (do-swing
+   (if (SystemTray/isSupported)
+     (let [tray (SystemTray/getSystemTray)
+           image (ImageIO/read (File. "logo.png"))
+           icon (TrayIcon. image "Tip text")]
+       (on-left-mouse-button-clicked icon toggle-display)
+       (try
+        (.add tray icon)
+        (catch AWTException e
+          (println "Unable to add to system tray: " + e))))
+     (println "No system tray."))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Main
@@ -156,12 +166,9 @@
      (printf "Usage: %s tumblr-json-file%n" progname) (flush)
      (System/exit 0))
   ([_ tumblr-filepath]
-     (let [search-agent (agent {})
-           display-agent (agent {})
-           tray-agent (agent {})]
-       (send display-agent display-init search-agent)
-       (send search-agent search-init display-agent tumblr-filepath)
-       (send tray-agent tray-init display-agent))))
+     (send *search-agent* search-init tumblr-filepath)
+     (display-init)
+     (tray-init)))
 
 ;; Hack until clojure allows to differentiate between running a file as
 ;; a script and loading it from another module.
