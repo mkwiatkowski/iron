@@ -80,7 +80,7 @@
   (let [frame (JFrame. "Iron")
         pane (.getContentPane frame)
         label (JLabel. "Hello world")
-        field (JTextField. 20)
+        field (JTextField. 30)
         state {:frame frame :label label :search search}]
     (document-listener field
       (fn [_ e]
