@@ -3,10 +3,10 @@
    [clojure.contrib.json.read :as json])
   (:import
    (java.io File)
-   (java.awt AWTException GridLayout SystemTray TrayIcon)
+   (java.awt AWTException SystemTray TrayIcon)
    (java.awt.event KeyEvent KeyListener MouseEvent MouseListener)
    (javax.imageio ImageIO)
-   (javax.swing JFrame JLabel JTextField)
+   (javax.swing JFrame JLabel JTextField BoxLayout)
    (javax.swing.event DocumentListener)))
 
 ;; TODO: Circular dependency hack.
@@ -78,6 +78,7 @@
 
 (defn display-init [_ search]
   (let [frame (JFrame. "Iron")
+        pane (.getContentPane frame)
         label (JLabel. "Hello world")
         field (JTextField. 20)
         state {:frame frame :label label :search search}]
@@ -85,9 +86,9 @@
       (fn [_ e]
         (send (:search state) query (document-text (.getDocument e)))))
     (on-escape-pressed field #(toggle-visible frame))
+    (.setLayout pane (BoxLayout. pane BoxLayout/Y_AXIS))
     (doto frame
       (.setUndecorated true)
-      (.setLayout (GridLayout.))
       (.add field)
       (.add label)
       (.pack)
