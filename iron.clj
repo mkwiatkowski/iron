@@ -117,15 +117,19 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Main
 ;;
-(defn main []
-  (let [search-agent (agent {})
-        display-agent (agent {})
-        tray-agent (agent {})]
-    (send display-agent display-init search-agent)
-    (send search-agent search-init display-agent (second *command-line-args*))
-    (send tray-agent tray-init display-agent)))
+(defn main
+  ([progname]
+     (printf "Usage: %s tumblr-json-file%n" progname) (flush)
+     (System/exit 0))
+  ([_ tumblr-filepath]
+     (let [search-agent (agent {})
+           display-agent (agent {})
+           tray-agent (agent {})]
+       (send display-agent display-init search-agent)
+       (send search-agent search-init display-agent tumblr-filepath)
+       (send tray-agent tray-init display-agent))))
 
 ;; Hack until clojure allows to differentiate between running a file as
 ;; a script and loading it from another module.
 (if (= "iron.clj" (first *command-line-args*))
-  (main))
+  (apply main *command-line-args*))
