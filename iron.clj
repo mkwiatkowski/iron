@@ -35,7 +35,7 @@
 
 (defn containing-text [text collection]
   (filter #(and (= (% "type") "regular")
-                (.contains (% "regular-title") text))
+                (.contains #^String (% "regular-title") text))
           collection))
 
 (defn query [state text]
