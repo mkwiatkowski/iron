@@ -125,4 +125,7 @@
     (send search-agent search-init display-agent (second *command-line-args*))
     (send tray-agent tray-init display-agent)))
 
-(if *command-line-args* (main))
+;; Hack until clojure allows to differentiate between running a file as
+;; a script and loading it from another module.
+(if (= "iron.clj" (first *command-line-args*))
+  (main))
