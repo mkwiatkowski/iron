@@ -66,6 +66,15 @@
      (insertUpdate [e] (func :insert e))
      (removeUpdate [e] (func :remove e)))))
 
+(defn- document-text [doc]
+  (.getText doc 0 (.getLength doc)))
+
+(defn- on-document-changed [field func]
+  (add-document-listener
+   field
+   (fn [_ e]
+     (func (document-text (.getDocument e))))))
+
 (defn- add-key-listener [object func]
   (.addKeyListener
    object
@@ -79,9 +88,6 @@
    object
    (fn [type e] (if (and (= type :pressed)
                          (= (.getKeyCode e) KeyEvent/VK_ESCAPE)) (func)))))
-
-(defn- document-text [doc]
-  (.getText doc 0 (.getLength doc)))
 
 (defn- toggle-visible [frame]
   (.setVisible frame (not (.isVisible frame))))
@@ -106,9 +112,7 @@
    (let [frame (JFrame. "Iron")
          pane (.getContentPane frame)
          field (JTextField. 30)]
-     (add-document-listener field
-       (fn [_ e]
-         (send *search-agent* query (document-text (.getDocument e)))))
+     (on-document-changed field #(send *search-agent* query %))
      (on-escape-pressed field #(toggle-visible frame))
      (doto pane
        (.setLayout (BoxLayout. pane BoxLayout/Y_AXIS))
