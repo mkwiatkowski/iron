@@ -36,10 +36,12 @@
   {:tumblr (read-json-file tumblr-filepath)
    :display display})
 
+(defn containing-text [text collection]
+  (filter #(and (= (% "type") "regular") (starts-with? (% "regular-title") text)) collection))
+
 (defn query [state text]
   (when (:tumblr state)
-    (let [results (filter #(and (= (% "type") "regular") (starts-with? (% "regular-title") text))
-                          (:tumblr state))]
+    (let [results (containing-text text (:tumblr state))]
       (when (not (empty? results))
         (send (:display state) update-results ((first results) "regular-title")))))
   state)
