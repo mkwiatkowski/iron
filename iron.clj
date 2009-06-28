@@ -36,12 +36,20 @@
 (defn- is-lower-case? [string]
   (every? #(Character/isLowerCase #^Character %) string))
 
+(defn- contains-key-matching?
+  "returns true if given map contains the key and the corresponding value
+  matches predicate"
+  [map key pred?]
+  (and (contains? map key) (pred? (map key))))
+
 (defn containing-text [text collection]
   (let [contains-text? (if (is-lower-case? text)
                    #(.contains (.toLowerCase #^String %) text)
                    #(.contains #^String % text))]
-    (filter #(and (contains? % "regular-title") (contains-text? (% "regular-title")))
-          collection)))
+    (filter #(or (contains-key-matching? % "regular-title" contains-text?)
+                 (contains-key-matching? % "url-with-slug" contains-text?)
+                 (contains-key-matching? % "regular-body" contains-text?))
+            collection)))
 
 (defn search-init [state tumblr-filepath]
   {:tumblr (read-json-file tumblr-filepath)})
