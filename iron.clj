@@ -40,8 +40,7 @@
   (let [contains-text? (if (is-lower-case? text)
                    #(.contains (.toLowerCase #^String %) text)
                    #(.contains #^String % text))]
-    (filter #(and (= (% "type") "regular")
-                  (contains-text? (% "regular-title")))
+    (filter #(and (contains? % "regular-title") (contains-text? (% "regular-title")))
           collection)))
 
 (defn search-init [state tumblr-filepath]
