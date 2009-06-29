@@ -21,4 +21,10 @@
         (is (= [clojure haskell] (containing-text "rock" [clojure tumblr haskell])) "disregards type")
         (is (= [haskell] (containing-text "haskell" [haskell empty])) "ignores elements without regular-title")))))
 
+(deftest snippet-from-post-test
+  (let [snippet-from-post (ns-resolve 'iron 'snippet-from-post)]
+    (is (= "the post title" (snippet-from-post {"regular-title" "the post title"})) "post with regular-title")
+    (is (= "<html>the post body</html>" (snippet-from-post {"regular-body" "the post body"})) "post with regular-body")
+    (is (= "the-post-slug" (snippet-from-post {"url-with-slug" "http://time-loop.tumblr.com/post/12345/the-post-slug"})) "post with url-with-slug")))
+
 (run-tests)

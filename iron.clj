@@ -2,7 +2,8 @@
   (:require
    [clojure.contrib.json.read :as json])
   (:use
-   [clojure.contrib.swing-utils :only (do-swing)])
+   [clojure.contrib.swing-utils :only (do-swing)]
+   [clojure.contrib.str-utils2 :only (split)])
   (:import
    (java.io File)
    (java.awt AWTException SystemTray TrayIcon)
@@ -57,7 +58,7 @@
 (defn query [state text]
   (when (:tumblr state)
     (let [results (containing-text text (:tumblr state))]
-      (update-results (map #(% "regular-title") results))))
+      (update-results results)))
   state)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -112,9 +113,15 @@
       (ref-set result-labels [])))
   ([] (clear-results-list true)))
 
+(defn- snippet-from-post [post]
+  (cond
+    (post "regular-title") (post "regular-title")
+    (post "regular-body") (format "<html>%s</html>" (post "regular-body"))
+    (post "url-with-slug") (last (split (post "url-with-slug") #"/"))))
+
 (defn- labels-from-results [results]
   (concat
-   (map #(JLabel. %) (take *max-number-of-results* results))
+   (map #(JLabel. (snippet-from-post %)) (take *max-number-of-results* results))
    (if (> (count results) *max-number-of-results*)
      [(JLabel. (format "<html><font color=\"#999999\"><i>%d more results</i></font></html>" (- (count results) *max-number-of-results*)))]
      [])))
