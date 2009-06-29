@@ -3,7 +3,7 @@
    [clojure.contrib.json.read :as json])
   (:use
    [clojure.contrib.swing-utils :only (do-swing)]
-   [clojure.contrib.str-utils2 :only (split)])
+   [clojure.contrib.str-utils2 :only (blank? split)])
   (:import
    (java.io File)
    (java.awt AWTException SystemTray TrayIcon)
@@ -114,10 +114,10 @@
   ([] (clear-results-list true)))
 
 (defn- snippet-from-post [post]
-  (cond
-    (post "regular-title") (post "regular-title")
-    (post "regular-body") (format "<html>%s</html>" (post "regular-body"))
-    (post "url-with-slug") (last (split (post "url-with-slug") #"/"))))
+  (condp #(not (blank? (%2 %1))) post
+    "regular-title" (post "regular-title")
+    "regular-body" (format "<html>%s</html>" (post "regular-body"))
+    "url-with-slug" (last (split (post "url-with-slug") #"/"))))
 
 (defn- labels-from-results [results]
   (concat
