@@ -19,7 +19,10 @@
         (is (= [clojure] (containing-text "clojure" [clojure tumblr])) "is case-insensitive by default")
         (is (= [] (containing-text "Tumblr" [clojure tumblr])) "is case-sensitive when a uppercase character appears in a query")
         (is (= [clojure haskell] (containing-text "rock" [clojure tumblr haskell])) "disregards type")
-        (is (= [haskell] (containing-text "haskell" [haskell empty])) "ignores elements without regular-title")))))
+        (is (= [haskell] (containing-text "haskell" [haskell empty])) "ignores elements without regular-title")))
+    (let [loop {"url-with-slug" "http://time-loop.tumblr.com/post/12/outer-loop"}
+          spam {"url-with-slug" "http://time-loop.tumblr.com/post/98/a-plan-for-spam"}]
+      (is (= [loop] (containing-text "loop" [loop spam])) "looks only in the slug part of the url-with-slug"))))
 
 (deftest snippet-from-post-test
   (let [snippet-from-post (ns-resolve 'iron 'snippet-from-post)

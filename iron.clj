@@ -37,6 +37,11 @@
 (defn- is-lower-case? [string]
   (every? #(Character/isLowerCase #^Character %) string))
 
+(defn- extract-slug
+  "extracts last part of an url, usually called a slug"
+  [url-with-slug]
+  (last (split url-with-slug #"/")))
+
 (defn- contains-key-matching?
   "returns true if given map contains the key and the corresponding value
   matches predicate"
@@ -48,7 +53,8 @@
                    #(.contains (.toLowerCase #^String %) text)
                    #(.contains #^String % text))]
     (filter #(or (contains-key-matching? % "regular-title" contains-text?)
-                 (contains-key-matching? % "url-with-slug" contains-text?)
+                 (contains-key-matching? % "url-with-slug"
+                                         (comp contains-text? extract-slug))
                  (contains-key-matching? % "regular-body" contains-text?))
             collection)))
 
@@ -117,7 +123,7 @@
   (condp #(not (blank? (%2 %1))) post
     "regular-title" (post "regular-title")
     "regular-body" (format "<html>%s</html>" (post "regular-body"))
-    "url-with-slug" (last (split (post "url-with-slug") #"/"))))
+    "url-with-slug" (extract-slug (post "url-with-slug"))))
 
 (defn- labels-from-results [results]
   (concat
